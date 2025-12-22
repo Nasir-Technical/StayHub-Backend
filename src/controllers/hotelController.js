@@ -26,13 +26,110 @@ exports.createHotel = async (req, res, next) => {
   }
 };
 
-// @desc    Get all hotels
+// @desc    Get all hotels with search & filter
 // @route   GET /api/hotels
 // @access  Public
 exports.getHotels = async (req, res, next) => {
   try {
-    // Only return approved hotels to public
-    const hotels = await Hotel.find({ isApproved: true });
+    const { city, minPrice, maxPrice, checkIn, checkOut, minRating } = req.query;
+
+    console.log(req.query);
+
+    const pipeline = [];
+
+    // 1. Match Basic Hotel Fields (Approved, City, Rating)
+    const matchStage = { isApproved: true };
+
+    if (city) {
+      matchStage.city = { $regex: city, $options: 'i' };
+    }
+
+    if (minRating) {
+      matchStage.rating = { $gte: parseFloat(minRating) };
+    }
+
+    pipeline.push({ $match: matchStage });
+
+    // 2. Lookup Rooms (Filter by Price and Availability)
+    const roomLookupLet = { hotelId: '$_id' };
+    const roomLookupPipeline = [
+      { $match: { $expr: { $eq: ['$hotel', '$$hotelId'] } } }
+    ];
+
+    // Filter by Price
+    if (minPrice || maxPrice) {
+      const priceMatch = {};
+      if (minPrice) priceMatch.$gte = parseFloat(minPrice);
+      if (maxPrice) priceMatch.$lte = parseFloat(maxPrice);
+      roomLookupPipeline.push({ $match: { price: priceMatch } });
+    }
+
+    // Filter by Date Availability
+    if (checkIn && checkOut) {
+      const start = new Date(checkIn);
+      const end = new Date(checkOut);
+
+      // Lookup Bookings for this room that overlap
+      roomLookupPipeline.push({
+        $lookup: {
+          from: 'bookings',
+          let: { roomId: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$room', '$$roomId'] },
+                    // Overlap Condition: StartA < EndB && EndA > StartB
+                    { $lt: ['$checkIn', end] },
+                    { $gt: ['$checkOut', start] }
+                  ]
+                }
+              }
+            }
+          ],
+          as: 'overlappingBookings'
+        }
+      });
+
+      // Exclude rooms with overlapping bookings OR no available rooms
+      // Logic: If overlappingBookings.length > 0 => Unavailable
+      // Also: availableRooms > 0 must be true (general capacity)
+      roomLookupPipeline.push({
+        $match: {
+          overlappingBookings: { $size: 0 },
+          availableRooms: { $gt: 0 }
+        }
+      });
+      
+      // Remove the temp field
+      roomLookupPipeline.push({ $project: { overlappingBookings: 0 } });
+    } else {
+        // If no dates provided, just check if it has "some" inventory? 
+        // Or just availableRooms > 0
+        roomLookupPipeline.push({ $match: { availableRooms: { $gt: 0 } } });
+    }
+
+    pipeline.push({
+      $lookup: {
+        from: 'rooms',
+        let: roomLookupLet,
+        pipeline: roomLookupPipeline,
+        as: 'rooms'
+      }
+    });
+
+    // 3. Filter Hotels that have at least one valid room
+    pipeline.push({
+      $match: {
+        'rooms.0': { $exists: true }
+      }
+    });
+
+    // 4. Sort (by Rating Descending by default?)
+    pipeline.push({ $sort: { rating: -1, createdAt: -1 } });
+
+    const hotels = await Hotel.aggregate(pipeline);
 
     res.status(200).json({
       success: true,
@@ -57,6 +154,32 @@ exports.approveHotel = async (req, res, next) => {
         }
 
         hotel = await Hotel.findByIdAndUpdate(req.params.id, { isApproved: true }, {
+            new: true,
+            runValidators: true
+        });
+
+        res.status(200).json({
+            success: true,
+            data: hotel
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, error: 'Server Error' });
+    }
+}
+
+// @desc    Reject hotel
+// @route   PUT /api/hotels/:id/reject
+// @access  Private (Admin)
+exports.rejectHotel = async (req, res, next) => {
+    try {
+        let hotel = await Hotel.findById(req.params.id);
+
+        if (!hotel) {
+             return res.status(404).json({ success: false, error: 'Hotel not found' });
+        }
+
+        hotel = await Hotel.findByIdAndUpdate(req.params.id, { isApproved: false }, {
             new: true,
             runValidators: true
         });

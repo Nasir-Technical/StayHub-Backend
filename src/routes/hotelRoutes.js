@@ -1,5 +1,5 @@
 const express = require('express');
-const { createHotel, getHotels, approveHotel } = require('../controllers/hotelController');
+const { createHotel, getHotels, approveHotel, rejectHotel } = require('../controllers/hotelController');
 
 const router = express.Router();
 
@@ -13,5 +13,9 @@ router
 router
     .route('/:id/approve')
     .put(protect, authorize('admin'), approveHotel);
+
+router
+    .route('/:id/reject')
+    .put(protect, authorize('admin'), rejectHotel);
 
 module.exports = router;
