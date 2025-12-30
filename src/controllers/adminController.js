@@ -57,6 +57,23 @@ exports.getUsers = async (req, res, next) => {
   }
 };
 
+// @desc    Get all hotels (Admin view)
+// @route   GET /api/admin/hotels
+// @access  Private (Admin)
+exports.getAllHotels = async (req, res, next) => {
+    try {
+        const hotels = await Hotel.find().populate('owner', 'name email');
+        res.status(200).json({
+            success: true,
+            count: hotels.length,
+            data: hotels
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, error: 'Server Error' });
+    }
+};
+
 // @desc    Block user (Toggle isActive)
 // @route   PUT /api/admin/users/:id/block
 // @access  Private (Admin)

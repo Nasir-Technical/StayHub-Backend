@@ -1,5 +1,5 @@
 const express = require('express');
-const { getStats, getUsers, blockUser } = require('../controllers/adminController');
+const { getStats, getUsers, blockUser, getAllHotels } = require('../controllers/adminController');
 
 const router = express.Router();
 
@@ -11,6 +11,7 @@ router.use(authorize('admin'));
 
 router.get('/stats', getStats);
 router.get('/users', getUsers);
+router.get('/hotels', getAllHotels);
 router.put('/users/:id/block', blockUser);
 
 module.exports = router;

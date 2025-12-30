@@ -36,11 +36,11 @@ const roomSchema = new mongoose.Schema({
 });
 
 // Pre-save hook to set availableRooms = totalRooms if not set (mostly for initial creation if not handled in controller)
-roomSchema.pre('save', function(next) {
+// Pre-save hook to set availableRooms = totalRooms if not set
+roomSchema.pre('save', function() {
   if (this.isNew && this.availableRooms === undefined) {
     this.availableRooms = this.totalRooms;
   }
-  next();
 });
 
 module.exports = mongoose.model('Room', roomSchema);

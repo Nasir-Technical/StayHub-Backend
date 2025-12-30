@@ -129,7 +129,10 @@ exports.getHotels = async (req, res, next) => {
     // 4. Sort (by Rating Descending by default?)
     pipeline.push({ $sort: { rating: -1, createdAt: -1 } });
 
+    console.log('Search Pipeline:', JSON.stringify(pipeline, null, 2));
+
     const hotels = await Hotel.aggregate(pipeline);
+    console.log('Search Results Count:', hotels.length);
 
     res.status(200).json({
       success: true,
@@ -192,4 +195,44 @@ exports.rejectHotel = async (req, res, next) => {
         console.error(err);
         res.status(500).json({ success: false, error: 'Server Error' });
     }
-}
+};
+
+// @desc    Get owner's hotels
+// @route   GET /api/owner/hotels
+// @access  Private (Hotel Owner)
+exports.getMyHotels = async (req, res, next) => {
+    try {
+        const hotels = await Hotel.find({ owner: req.user.id });
+        res.status(200).json({
+            success: true,
+            count: hotels.length,
+            data: hotels
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, error: 'Server Error' });
+    }
+};
+
+// @desc    Get single hotel
+// @route   GET /api/hotels/:id
+// @access  Public
+exports.getHotel = async (req, res, next) => {
+    try {
+        const hotel = await Hotel.findById(req.params.id).populate('owner', 'name email');
+
+        if (!hotel) {
+            return res.status(404).json({ success: false, error: 'Hotel not found' });
+        }
+
+        const rooms = await require('../models/Room').find({ hotel: req.params.id });
+
+        res.status(200).json({
+            success: true,
+            data: { ...hotel.toObject(), rooms }
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, error: 'Server Error' });
+    }
+};
