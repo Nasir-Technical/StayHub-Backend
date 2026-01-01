@@ -61,3 +61,64 @@ exports.createRoom = async (req, res, next) => {
     res.status(500).json({ success: false, error: 'Server Error' });
   }
 };
+
+// @desc    Update room
+// @route   PUT /api/rooms/:id
+// @access  Private (Hotel Owner)
+exports.updateRoom = async (req, res, next) => {
+  try {
+    let room = await Room.findById(req.params.id);
+
+    if (!room) {
+      return res.status(404).json({ success: false, error: 'Room not found' });
+    }
+
+    // Check ownership (via Hotel)
+    const hotel = await Hotel.findById(room.hotel);
+    if (!hotel || hotel.owner.toString() !== req.user.id) {
+        return res.status(403).json({ success: false, error: 'Not authorized to update this room' });
+    }
+
+    room = await Room.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true
+    });
+
+    res.status(200).json({
+      success: true,
+      data: room
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: 'Server Error' });
+  }
+};
+
+// @desc    Delete room
+// @route   DELETE /api/rooms/:id
+// @access  Private (Hotel Owner)
+exports.deleteRoom = async (req, res, next) => {
+  try {
+    const room = await Room.findById(req.params.id);
+
+    if (!room) {
+      return res.status(404).json({ success: false, error: 'Room not found' });
+    }
+
+    // Check ownership
+    const hotel = await Hotel.findById(room.hotel);
+    if (!hotel || hotel.owner.toString() !== req.user.id) {
+        return res.status(403).json({ success: false, error: 'Not authorized to delete this room' });
+    }
+
+    await room.deleteOne();
+
+    res.status(200).json({
+      success: true,
+      data: {}
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: 'Server Error' });
+  }
+};

@@ -95,3 +95,30 @@ exports.createBooking = async (req, res, next) => {
     res.status(500).json({ success: false, error: 'Server Error' });
   }
 };
+
+// @desc    Get bookings for hotel owner's properties
+// @route   GET /api/bookings/owner
+// @access  Private (Hotel Owner)
+exports.getOwnerBookings = async (req, res, next) => {
+    try {
+        // 1. Find all hotels owned by this user
+        const hotels = await Hotel.find({ owner: req.user.id });
+        const hotelIds = hotels.map(h => h._id);
+
+        // 2. Find bookings for these hotels
+        const bookings = await Booking.find({ hotel: { $in: hotelIds } })
+            .populate('user', 'name email')
+            .populate('room', 'name')
+            .populate('hotel', 'name')
+            .sort('-createdAt'); // Latest first
+
+        res.status(200).json({
+            success: true,
+            count: bookings.length,
+            data: bookings
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, error: 'Server Error' });
+    }
+};

@@ -41,6 +41,10 @@ const hotelSchema = new mongoose.Schema({
     max: 5,
     default: 0
   },
+  images: {
+    type: [String],
+    default: []
+  },
   owner: {
     type: mongoose.Schema.ObjectId,
     ref: 'User',

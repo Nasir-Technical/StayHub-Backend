@@ -74,7 +74,7 @@ exports.getAllHotels = async (req, res, next) => {
     }
 };
 
-// @desc    Block user (Toggle isActive)
+// @desc    Block/Unblock user (Toggle isActive)
 // @route   PUT /api/admin/users/:id/block
 // @access  Private (Admin)
 exports.blockUser = async (req, res, next) => {
@@ -85,14 +85,19 @@ exports.blockUser = async (req, res, next) => {
             return res.status(404).json({ success: false, error: 'User not found' });
         }
 
-        user = await User.findByIdAndUpdate(req.params.id, { isActive: false }, {
+        // Toggle logic: If active(true) -> false. If blocked(false) -> true
+        // Or specific status if body provided (optional)
+        const newStatus = !user.isActive;
+
+        user = await User.findByIdAndUpdate(req.params.id, { isActive: newStatus }, {
             new: true,
             runValidators: true
         });
 
         res.status(200).json({
             success: true,
-            data: user
+            data: user,
+            message: newStatus ? 'User unblocked' : 'User blocked'
         });
     } catch (err) {
         console.error(err);

@@ -236,3 +236,81 @@ exports.getHotel = async (req, res, next) => {
         res.status(500).json({ success: false, error: 'Server Error' });
     }
 };
+
+
+
+// @desc    Update hotel
+// @route   PUT /api/hotels/:id
+// @access  Private (Hotel Owner)
+exports.updateHotel = async (req, res, next) => {
+    try {
+        let hotel = await Hotel.findById(req.params.id);
+
+        if (!hotel) {
+            return res.status(404).json({ success: false, error: 'Hotel not found' });
+        }
+
+        // Check ownership
+        if (hotel.owner.toString() !== req.user.id && req.user.role !== 'admin') {
+            return res.status(403).json({ success: false, error: 'Not authorized to update this hotel' });
+        }
+
+        hotel = await Hotel.findByIdAndUpdate(req.params.id, req.body, {
+            new: true,
+            runValidators: true
+        });
+
+        res.status(200).json({
+            success: true,
+            data: hotel
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, error: 'Server Error' });
+    }
+};
+
+// @desc    Get owner stats (Revenue, Bookings, Properties)
+// @route   GET /api/hotels/stats/mine
+// @access  Private (Hotel Owner)
+exports.getOwnerStats = async (req, res, next) => {
+    try {
+        const Booking = require('../models/Booking'); // Ensure imported
+        
+        // 1. Get My Hotels
+        const hotels = await Hotel.find({ owner: req.user.id });
+        const hotelIds = hotels.map(h => h._id);
+
+        // 2. Properties Count
+        const propertiesCount = hotels.length;
+
+        // 3. Bookings
+        const bookings = await Booking.find({ hotel: { $in: hotelIds } });
+        const totalBookings = bookings.length;
+
+        // 4. Revenue
+        const totalRevenue = bookings.reduce((acc, curr) => acc + (curr.totalPrice || 0), 0);
+
+        // 5. Recent Bookings (Limit 5)
+        const recentBookings = await Booking.find({ hotel: { $in: hotelIds } })
+            .populate('user', 'name')
+            .populate('hotel', 'name')
+            .populate('room', 'name')
+            .sort('-createdAt')
+            .limit(5);
+
+        res.status(200).json({
+            success: true,
+            data: {
+                revenue: totalRevenue,
+                bookings: totalBookings,
+                properties: propertiesCount,
+                occupancy: 'N/A',
+                recentBookings
+            }
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, error: 'Server Error' });
+    }
+};

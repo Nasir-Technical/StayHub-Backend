@@ -1,5 +1,5 @@
 const express = require('express');
-const { createHotel, getHotels, approveHotel, rejectHotel, getMyHotels, getHotel } = require('../controllers/hotelController');
+const { createHotel, getHotels, approveHotel, rejectHotel, getMyHotels, getHotel, getOwnerStats, updateHotel } = require('../controllers/hotelController');
 
 const router = express.Router();
 
@@ -11,8 +11,12 @@ router
   .post(protect, authorize('hotelOwner'), createHotel);
 
 router.get('/mine', protect, authorize('hotelOwner'), getMyHotels);
+router.get('/stats/mine', protect, authorize('hotelOwner'), getOwnerStats);
 
-router.get('/:id', getHotel);
+router
+  .route('/:id')
+  .get(getHotel)
+  .put(protect, authorize('hotelOwner', 'admin'), updateHotel);
 
 router
     .route('/:id/approve')
