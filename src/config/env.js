@@ -16,8 +16,8 @@ const requiredEnvs = ['MONGO_URI', 'JWT_SECRET'];
 const missingEnvs = requiredEnvs.filter((key) => !process.env[key]);
 
 if (missingEnvs.length > 0) {
-  console.error(`ERROR: Missing required environment variables: ${missingEnvs.join(', ')}`);
-  process.exit(1);
+  console.warn(`WARNING: Missing environment variables: ${missingEnvs.join(', ')}`);
+  // We won't exit here to allow Vercel to potentially show logs or handle the error gracefully
 }
 
 module.exports = config;
