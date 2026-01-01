@@ -17,6 +17,9 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Handle preflight OPTIONS requests early for Vercel
+app.options('*', cors()); 
+
 // Configure CORS
 const allowedOrigins = [
   'https://stayhub-frontend.vercel.app',
