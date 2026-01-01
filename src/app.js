@@ -16,8 +16,18 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors());
-app.use(helmet());
+
+// Configure CORS
+app.use(cors({
+  origin: true, // Reflects the request origin
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+app.use(helmet({
+  crossOriginResourcePolicy: false,
+}));
 if (config.nodeEnv === 'development') {
   app.use(morgan('dev'));
 }
