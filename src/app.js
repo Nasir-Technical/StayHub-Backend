@@ -18,11 +18,23 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Configure CORS
+const allowedOrigins = [
+  'https://stayhub-frontend.vercel.app',
+  'http://localhost:3000'
+];
+
 app.use(cors({
-  origin: true, // Reflects the request origin
+  origin: function (origin, callback) {
+    // Check if the origin is in the allowed list or if it's a local/non-browser request
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
 }));
 
 app.use(helmet({
